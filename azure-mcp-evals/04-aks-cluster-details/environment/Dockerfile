@@ -6,7 +6,10 @@ RUN apt-get update && \
         curl \
         git \
         jq \
-        ca-certificates && \
+        ca-certificates \
+        bash && \
     rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash agent
 
 WORKDIR /app
