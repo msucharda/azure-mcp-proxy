@@ -85,9 +85,7 @@ curl http://localhost:8080/health
 │   ├── ... (02-10)
 │   └── shared/verify_tool.py        # Common trajectory parser
 │
-├── promptfooconfig.yaml             # Promptfoo static evals (offline alternative)
-├── tools/azure-mcp-tools.yaml       # Static tool definitions (15 tools)
-└── tests/tool-selection.yaml        # Promptfoo test cases
+└── README.md
 ```
 
 ## Authentication
@@ -97,3 +95,11 @@ The proxy inherits Azure credentials from the environment:
 - **Local**: `az login` (Azure CLI credential)
 - **Docker**: Mount `~/.azure` volume or pass `AZURE_*` env vars
 - **CI**: Service principal via `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`
+
+## Prerequisites
+
+- [Harbor](https://harborframework.com) (`pip install harbor`)
+- Docker
+- Node.js 22+
+- Azure CLI (`az login`)
+- `GITHUB_TOKEN` for Copilot CLI authentication
