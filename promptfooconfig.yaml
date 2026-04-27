@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: Azure MCP Proxy — Tool Selection Evals
+
+# ---------------------------------------------------------------------------
+# Provider configuration
+# Replace the model ID with your target model. The tools array defines
+# the Azure MCP tool surface area the model can choose from.
+# ---------------------------------------------------------------------------
+providers:
+  - id: openai:chat:gpt-4o
+    config:
+      temperature: 0
+      tool_choice: auto
+      tools: file://tools/azure-mcp-tools.yaml
+
+# ---------------------------------------------------------------------------
+# Prompt template
+# The system prompt instructs the model to act as an Azure assistant.
+# {{query}} is substituted per test case.
+# ---------------------------------------------------------------------------
+prompts:
+  - file://prompts/system-prompt.txt
+
+# ---------------------------------------------------------------------------
+# Default assertions applied to every test case
+# ---------------------------------------------------------------------------
+defaultTest:
+  assert:
+    - type: is-valid-openai-tools-call
+
+# ---------------------------------------------------------------------------
+# Test cases — 10 evals covering the Azure MCP ecosystem
+# ---------------------------------------------------------------------------
+tests: file://tests/tool-selection.yaml
