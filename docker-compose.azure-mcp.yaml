@@ -1,0 +1,37 @@
+# Azure MCP Proxy — Docker Compose Sidecar
+# Use this to run the Azure MCP proxy alongside Harbor eval tasks.
+#
+# Usage:
+#   docker compose -f docker-compose.azure-mcp.yaml up -d
+#   # Then run Harbor tasks:
+#   harbor run -p ./azure-mcp-evals -a copilot-cli -m claude-sonnet-4
+
+services:
+  azure-mcp:
+    build:
+      context: ./azure-proxy
+      dockerfile: Dockerfile
+    container_name: azure-mcp-proxy
+    ports:
+      - "8080:8080"
+    environment:
+      # Azure authentication — pass through from host
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID:-}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-}
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID:-}
+      # Or use Azure CLI credentials by mounting .azure
+    volumes:
+      - ${HOME}/.azure:/root/.azure:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  default:
+    name: harbor-network
+    external: true

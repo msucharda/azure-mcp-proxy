@@ -1,52 +1,99 @@
-# Azure MCP Proxy — Tool Selection Evals
+# Azure MCP Proxy — Evals for Copilot CLI
 
-Promptfoo evals testing whether an LLM correctly selects the right Azure MCP tool given a natural-language user query.
+Evaluate whether Copilot CLI correctly selects Azure MCP tools using [Harbor](https://harborframework.com) containerized evals.
 
-## 10 Eval Scenarios
+## Architecture
 
-| # | Scenario | Expected Tool | Key Assertion |
-|---|----------|---------------|---------------|
-| 1 | VM listing | `compute` → `compute_vm_get` | Tool + resource-group param |
-| 2 | Blob container creation | `storage` → `storage_blob_container_create` | Tool + account + container params |
-| 3 | Key Vault secret retrieval | `keyvault` → `keyvault_secret_get` | Tool + vault-name + secret-name |
-| 4 | AKS cluster details | `aks` → `aks_cluster_get` | Tool + cluster + resource-group |
-| 5 | Cosmos DB query | `cosmos` → `cosmos_database_container_item_query` | Tool + account + db + container |
-| 6 | Log Analytics KQL query | `monitor` → `monitor_workspace_log_query` | Tool + workspace |
-| 7 | App Service settings | `appservice` → `appservice_webapp_settings_get-appsettings` | Tool + app-name |
-| 8 | Container Apps listing | `containerapps` → `containerapps_list` | Tool + resource-group |
-| 9 | Resource group resources | `group_resource_list` | Tool + resource-group |
-| 10 | Multi-tool (subscription + compute) | `subscription_list` + `compute` | `tool-call-f1` ≥ 0.5 |
+```
+Copilot CLI ──▶ azure-proxy/server.mjs ──▶ @azure/mcp@latest ──▶ Azure APIs
+                (1 "azure" tool)            (61 real tools)
+```
 
-## Azure MCP Coverage
-
-15 tools defined (10 targets + 5 distractors): compute, storage, keyvault, aks, cosmos, monitor, appservice, containerapps, subscription\_list, group\_list, group\_resource\_list, postgres, redis, acr, search.
+The proxy collapses 61 Azure MCP tools into a single progressive-discovery "azure" tool.
+Supports **stdio** (local/Copilot CLI) and **HTTP** (Docker/Harbor) transports.
 
 ## Quick Start
 
+### Option 1: Local / WSL (stdio mode)
+
 ```bash
-npm install
-npx promptfoo eval
-npx promptfoo view   # opens results in browser
+# Clone and install
+git clone https://github.com/msucharda/azure-mcp-proxy.git
+cd azure-mcp-proxy/azure-proxy && npm install
+
+# Use with Copilot CLI (stdio — default)
+copilot --additional-mcp-config='{"mcpServers":{"azure":{"type":"stdio","command":"node","args":["azure-proxy/server.mjs"]}}}'
 ```
 
-## Configuration
+### Option 2: Harbor Evals (Docker sidecar)
 
-- **Provider**: Edit `promptfooconfig.yaml` to change the model (default: `openai:chat:gpt-4o`)
-- **Tools**: Azure MCP tool definitions in `tools/azure-mcp-tools.yaml`
-- **Tests**: 10 eval cases in `tests/tool-selection.yaml`
-- **Assertions**: Custom TypeScript helpers in `src/assertions/toolSelection.ts`
+```bash
+# Start the Azure MCP sidecar
+az login
+docker compose -f docker-compose.azure-mcp.yaml up -d
+
+# Run all 10 evals
+export GITHUB_TOKEN=<your-token>
+harbor run -p ./azure-mcp-evals -a copilot-cli -m claude-sonnet-4
+
+# Or run a single task
+harbor run -p ./azure-mcp-evals/01-compute-vm-listing -a copilot-cli
+```
+
+### Option 3: HTTP mode (standalone)
+
+```bash
+cd azure-proxy && npm install
+node server.mjs --http 8080
+
+# Health check
+curl http://localhost:8080/health
+# → {"status":"ok","tools":61}
+```
+
+## Eval Coverage (10 Harbor Tasks)
+
+| # | Task | Expected Tool | Key Parameters |
+|---|------|---------------|----------------|
+| 01 | VM listing | `compute` | resource-group |
+| 02 | Blob container creation | `storage` | account, container |
+| 03 | Key Vault secret retrieval | `keyvault` | vault-name, secret-name |
+| 04 | AKS cluster details | `aks` | cluster, resource-group |
+| 05 | Cosmos DB query | `cosmos` | account, database, container |
+| 06 | Log Analytics KQL query | `monitor` | workspace |
+| 07 | App Service settings | `appservice` | app-name |
+| 08 | Container Apps listing | `containerapps` | resource-group |
+| 09 | Resource group resources | `group_resource_list` | resource-group |
+| 10 | Multi-tool scenario | `subscription_list` + `compute` | resource-group |
 
 ## Project Structure
 
 ```
-├── promptfooconfig.yaml            # Main Promptfoo config
-├── prompts/
-│   └── system-prompt.txt           # Azure assistant system prompt
-├── tools/
-│   └── azure-mcp-tools.yaml        # 15 OpenAI-style tool definitions
-├── tests/
-│   └── tool-selection.yaml         # 10 eval test cases
-└── src/
-    └── assertions/
-        └── toolSelection.ts        # Reusable assertion helpers
+├── azure-proxy/                     # MCP proxy (stdio + HTTP)
+│   ├── server.mjs                   # Proxy server (progressive tool discovery)
+│   ├── package.json                 # @modelcontextprotocol/sdk
+│   └── Dockerfile                   # Docker image for sidecar
+│
+├── docker-compose.azure-mcp.yaml    # Sidecar for Harbor tasks
+│
+├── azure-mcp-evals/                 # Harbor dataset (10 tasks)
+│   ├── 01-compute-vm-listing/
+│   │   ├── instruction.md           # Natural language query
+│   │   ├── task.toml                # Task config + MCP server
+│   │   ├── environment/Dockerfile
+│   │   └── tests/test.sh            # Verifier script
+│   ├── ... (02-10)
+│   └── shared/verify_tool.py        # Common trajectory parser
+│
+├── promptfooconfig.yaml             # Promptfoo static evals (offline alternative)
+├── tools/azure-mcp-tools.yaml       # Static tool definitions (15 tools)
+└── tests/tool-selection.yaml        # Promptfoo test cases
 ```
+
+## Authentication
+
+The proxy inherits Azure credentials from the environment:
+
+- **Local**: `az login` (Azure CLI credential)
+- **Docker**: Mount `~/.azure` volume or pass `AZURE_*` env vars
+- **CI**: Service principal via `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`

@@ -1,0 +1,10 @@
+{
+  "name": "azure-mcp-proxy",
+  "version": "1.0.0",
+  "description": "Lightweight MCP proxy for progressive Azure tool discovery",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}
