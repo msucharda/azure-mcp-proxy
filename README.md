@@ -32,7 +32,7 @@ copilot --additional-mcp-config='{"mcpServers":{"azure":{"type":"stdio","command
 az login
 docker compose -f docker-compose.azure-mcp.yaml up -d
 
-# Run all 10 evals
+# Run all 20 evals
 export GITHUB_TOKEN=<your-token>
 harbor run -p ./azure-mcp-evals -a copilot-cli -m claude-sonnet-4
 
@@ -51,7 +51,7 @@ curl http://localhost:8080/health
 # → {"status":"ok","tools":61}
 ```
 
-## Eval Coverage (10 Harbor Tasks)
+## Eval Coverage (20 Harbor Tasks)
 
 | # | Task | Expected Tool | Key Parameters |
 |---|------|---------------|----------------|
@@ -65,6 +65,16 @@ curl http://localhost:8080/health
 | 08 | Container Apps listing | `containerapps` | resource-group |
 | 09 | Resource group resources | `group_resource_list` | resource-group |
 | 10 | Multi-tool scenario | `subscription_list` + `compute` | resource-group |
+| 11 | PostgreSQL server listing | `postgres` | — |
+| 12 | Redis cache details | `redis` | cache-name, resource-group |
+| 13 | Azure SQL database listing | `sql` | server, resource-group |
+| 14 | Container Registry images | `acr` | registry-name |
+| 15 | Function App config | `functionapp` | app-name, resource-group |
+| 16 | Event Hubs namespace | `eventhubs` | namespace |
+| 17 | Service Bus queues | `servicebus` | namespace |
+| 18 | RBAC role assignments | `role` | resource-group |
+| 19 | Azure Policy compliance | `policy` | — |
+| 20 | Multi-tool monitor (metrics + activity) | `monitor` | vm-name, resource-group |
 
 ## Project Structure
 
@@ -76,7 +86,7 @@ curl http://localhost:8080/health
 │
 ├── docker-compose.azure-mcp.yaml    # Sidecar for Harbor tasks
 │
-├── azure-mcp-evals/                 # Harbor dataset (10 tasks)
+├── azure-mcp-evals/                 # Harbor dataset (20 tasks)
 │   ├── 01-compute-vm-listing/
 │   │   ├── instruction.md           # Natural language query
 │   │   ├── task.toml                # Task config + MCP server
